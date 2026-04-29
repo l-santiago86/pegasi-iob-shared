@@ -1,6 +1,6 @@
 {
-  "name": "@pegasi-iob/shared",
-  "version": "0.1.0",
+  "name": "@pegasimed.com/pegasi-iob-shared",
+  "version": "0.2.0",
   "description": "Versioned shared TypeScript helpers for PEGASI IOB microservices.",
   "type": "module",
   "main": "./dist/index.js",
@@ -42,7 +42,8 @@
     "node": ">=22"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "restricted",
+    "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
