@@ -36,5 +36,5 @@ Use SemVer. Microservices should pin exact versions or controlled ranges and upg
 
 ```bash
 npm login --scope=@pegasimed.com --registry=https://registry.npmjs.org --auth-type=web
-npm publish --access restricted
+npm publish --access public --auth-type=web
 ```
