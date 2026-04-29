@@ -1,0 +1,41 @@
+﻿name: Branch policy
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+
+jobs:
+  master-merge-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce master promotion and hotfix policy
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ "$BASE_REF" != "master" ]; then
+            exit 0
+          fi
+
+          if [ "$HEAD_REF" = "staging" ]; then
+            echo "Allowed: staging promotion into master."
+            exit 0
+          fi
+
+          case "$PR_TITLE" in
+            fix:\ *|hotfix:\ *)
+              echo "Allowed: production hotfix/fix PR into master."
+              exit 0
+              ;;
+          esac
+
+          echo "PRs into master must come from staging, or be titled with 'fix: ' or 'hotfix: '."
+          exit 1
