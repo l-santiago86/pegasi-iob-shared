@@ -1,10 +1,12 @@
-name: Validate
+﻿name: Validate
 
 on:
   pull_request:
   push:
     branches:
-      - main
+      - dev
+      - staging
+      - master
 
 jobs:
   validate:
@@ -20,3 +22,4 @@ jobs:
       - run: npm ci
       - run: npm run validate
       - run: npm run build
+
