@@ -2,6 +2,8 @@
 
 Versioned TypeScript helpers for PEGASI IOB microservices.
 
+Package name: `@pegasimed.com/pegasi-iob-shared`.
+
 This package exists to remove duplicated low-level helpers without coupling service repositories to each other. Services must depend on released package versions, not sibling source paths.
 
 ## Scope
@@ -30,3 +32,9 @@ npm run build
 
 Use SemVer. Microservices should pin exact versions or controlled ranges and upgrade deliberately through normal PR review.
 
+## Publishing
+
+```bash
+npm login --scope=@pegasimed.com --registry=https://registry.npmjs.org --auth-type=web
+npm publish --access public --auth-type=web
+```
