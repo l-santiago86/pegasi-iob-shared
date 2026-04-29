@@ -1,0 +1,52 @@
+{
+  "name": "@pegasi-iob/shared",
+  "version": "0.1.0",
+  "description": "Versioned shared TypeScript helpers for PEGASI IOB microservices.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./ids": {
+      "types": "./dist/ids.d.ts",
+      "import": "./dist/ids.js"
+    },
+    "./jwt": {
+      "types": "./dist/jwt.d.ts",
+      "import": "./dist/jwt.js"
+    },
+    "./stable-json": {
+      "types": "./dist/stable-json.d.ts",
+      "import": "./dist/stable-json.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "validate": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  }
+}
+
