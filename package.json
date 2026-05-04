@@ -22,6 +22,10 @@
       "types": "./dist/jwt.d.ts",
       "import": "./dist/jwt.js"
     },
+    "./phi-redaction": {
+      "types": "./dist/phi-redaction.d.ts",
+      "import": "./dist/phi-redaction.js"
+    },
     "./stable-json": {
       "types": "./dist/stable-json.d.ts",
       "import": "./dist/stable-json.js"
