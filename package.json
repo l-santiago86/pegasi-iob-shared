@@ -1,6 +1,6 @@
 {
   "name": "@pegasimed.com/pegasi-iob-shared",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Versioned shared TypeScript helpers for PEGASI IOB microservices.",
   "repository": {
     "type": "git",
@@ -37,6 +37,10 @@
     "./stable-json": {
       "types": "./dist/stable-json.d.ts",
       "import": "./dist/stable-json.js"
+    },
+    "./worker-logger": {
+      "types": "./dist/worker-logger.d.ts",
+      "import": "./dist/worker-logger.js"
     }
   },
   "files": [
@@ -62,14 +66,17 @@
     "registry": "https://registry.npmjs.org/"
   },
   "peerDependencies": {
-    "fastify": "^5.0.0"
+    "fastify": "^5.0.0",
+    "pino": "^10.0.0"
   },
   "peerDependenciesMeta": {
-    "fastify": { "optional": true }
+    "fastify": { "optional": true },
+    "pino": { "optional": false }
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "fastify": "^5.6.2",
+    "pino": "^10.3.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"
   }

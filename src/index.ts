@@ -4,4 +4,5 @@ export * from "./ids.js";
 export * from "./jwt.js";
 export * from "./phi-redaction.js";
 export * from "./stable-json.js";
+export * from "./worker-logger.js";
 
