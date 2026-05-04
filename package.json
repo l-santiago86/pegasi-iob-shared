@@ -1,6 +1,6 @@
 {
   "name": "@pegasimed.com/pegasi-iob-shared",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Versioned shared TypeScript helpers for PEGASI IOB microservices.",
   "type": "module",
   "main": "./dist/index.js",
