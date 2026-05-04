@@ -1,6 +1,6 @@
 {
   "name": "@pegasimed.com/pegasi-iob-shared",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Versioned shared TypeScript helpers for PEGASI IOB microservices.",
   "repository": {
     "type": "git",
@@ -41,8 +41,12 @@
   },
   "files": [
     "dist",
+    "scripts",
     "README.md"
   ],
+  "bin": {
+    "lint-phi": "./scripts/lint-phi.mjs"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
