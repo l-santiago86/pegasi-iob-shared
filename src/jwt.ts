@@ -13,6 +13,22 @@ export interface VerifyHs256JwtOptions {
   readonly minSecretBytes?: number;
 }
 
+export interface VerifyHs256JwtWithRotationOptions {
+  /**
+   * Current signing key. Tokens issued from now on are signed with this.
+   * Validation tries this first.
+   */
+  readonly currentSecret: string;
+  /**
+   * Previous signing key. Set during the grace period after a rotation so
+   * tokens issued before the rotation still validate. Leave undefined when
+   * no rotation is in progress.
+   */
+  readonly previousSecret?: string;
+  readonly nowSeconds?: number;
+  readonly minSecretBytes?: number;
+}
+
 export function parseBearerAuthorization(authorization: string | undefined): string {
   if (!authorization) {
     throw new Error("Authorization header is required.");
@@ -58,6 +74,44 @@ export function verifyHs256Jwt(token: string, options: VerifyHs256JwtOptions): J
     }
   }
   return claims as JwtClaims;
+}
+
+/**
+ * Validates an HS256 JWT against {@link VerifyHs256JwtWithRotationOptions.currentSecret}
+ * first; if signature verification fails AND a `previousSecret` is provided,
+ * retries with that one. Use this in services during the rotation grace
+ * period so tokens minted with the old key keep validating until the
+ * rotator Lambda flips the previous slot off.
+ *
+ * Other validation steps (alg, typ, sub, exp) are unchanged. Only the
+ * signature verification is dual-key.
+ */
+export function verifyHs256JwtWithRotation(
+  token: string,
+  options: VerifyHs256JwtWithRotationOptions
+): JwtClaims {
+  try {
+    return verifyHs256Jwt(token, {
+      secret: options.currentSecret,
+      ...(options.nowSeconds !== undefined ? { nowSeconds: options.nowSeconds } : {}),
+      ...(options.minSecretBytes !== undefined ? { minSecretBytes: options.minSecretBytes } : {})
+    });
+  } catch (err) {
+    // Only fall back to previous on signature failures, never on alg/typ/sub/exp.
+    // That keeps the validation surface identical between the two keys.
+    if (
+      !options.previousSecret ||
+      !(err instanceof Error) ||
+      !err.message.includes("signature is invalid")
+    ) {
+      throw err;
+    }
+    return verifyHs256Jwt(token, {
+      secret: options.previousSecret,
+      ...(options.nowSeconds !== undefined ? { nowSeconds: options.nowSeconds } : {}),
+      ...(options.minSecretBytes !== undefined ? { minSecretBytes: options.minSecretBytes } : {})
+    });
+  }
 }
 
 function parseJwtPart(encoded: string): Record<string, unknown> {
