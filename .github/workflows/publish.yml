@@ -1,0 +1,55 @@
+name: Publish to npm
+
+# Auto-publishes to npm whenever the version field in package.json on
+# master changes. Idempotent: if the version is already on npm, the
+# publish step is skipped (no error).
+#
+# Secret required: NPM_TOKEN — an automation token from
+# https://www.npmjs.com/settings/<org>/tokens with publish scope on
+# the @pegasimed.com scope.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'package.json'
+      - 'src/**'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Install
+        run: npm ci
+
+      - name: Validate (typecheck + tests)
+        run: npm run validate
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish (skip if version already on npm)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VER=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view "${PKG_NAME}@${PKG_VER}" version 2>/dev/null || true)
+          if [ "$PUBLISHED" = "$PKG_VER" ]; then
+            echo "::notice::${PKG_NAME}@${PKG_VER} is already published. Nothing to do."
+            exit 0
+          fi
+          npm publish --provenance --access public
