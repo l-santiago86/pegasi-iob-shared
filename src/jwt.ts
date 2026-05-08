@@ -34,6 +34,7 @@ export interface VerifyOidcJwtOptions {
   readonly issuer: string;
   readonly audience: string | readonly string[];
   readonly jwksUri?: string;
+  readonly jwksCacheTtlMs?: number;
   readonly nowSeconds?: number;
   readonly allowedAlgorithms?: readonly string[];
   readonly fetchImpl?: typeof fetch;
@@ -48,6 +49,8 @@ export interface VerifyBearerJwtOptions {
 interface JwksDocument {
   readonly keys?: readonly JsonWebKey[];
 }
+
+const jwksCache = new Map<string, { readonly expiresAt: number; readonly document: JwksDocument }>();
 
 export function parseBearerAuthorization(authorization: string | undefined): string {
   if (!authorization) {
@@ -231,12 +234,21 @@ function parseJwtPart(encoded: string): Record<string, unknown> {
 
 async function findJwk(kid: string, options: VerifyOidcJwtOptions): Promise<JsonWebKey | undefined> {
   const jwksUri = options.jwksUri ?? `${options.issuer.replace(/\/+$/, "")}/protocol/openid-connect/certs`;
+  const cacheEntry = jwksCache.get(jwksUri);
+  if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
+    return cacheEntry.document.keys?.find((key) => key.kid === kid);
+  }
+
   const fetchImpl = options.fetchImpl ?? fetch;
   const response = await fetchImpl(jwksUri);
   if (!response.ok) {
     throw new Error(`JWKS fetch failed with HTTP ${response.status}.`);
   }
   const document = (await response.json()) as JwksDocument;
+  jwksCache.set(jwksUri, {
+    expiresAt: Date.now() + (options.jwksCacheTtlMs ?? 300_000),
+    document
+  });
   return document.keys?.find((key) => key.kid === kid);
 }
 
