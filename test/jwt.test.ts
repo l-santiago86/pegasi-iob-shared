@@ -12,6 +12,8 @@ import {
   verifyOidcJwt
 } from "../src/jwt.js";
 
+let rs256FixtureCounter = 0;
+
 describe("jwt helpers", () => {
   const secret = "0123456789abcdef0123456789abcdef";
 
@@ -107,6 +109,7 @@ describe("jwt helpers", () => {
         issuer,
         audience,
         nowSeconds,
+        jwksUri: fixture.jwksUri,
         fetchImpl: fixture.fetchImpl
       });
 
@@ -156,7 +159,7 @@ describe("jwt helpers", () => {
       await expect(
         verifyBearerAuthorization(`Bearer ${rs256.token}`, {
           mode: "hybrid",
-          oidc: { issuer, audience, nowSeconds, fetchImpl: rs256.fetchImpl }
+          oidc: { issuer, audience, nowSeconds, jwksUri: rs256.jwksUri, fetchImpl: rs256.fetchImpl }
         })
       ).resolves.toMatchObject({ sub: "user_operator" });
     });
@@ -172,9 +175,10 @@ function signJwt(payload: Record<string, unknown>, secret: string): string {
 
 function createRs256Fixture(payload: Record<string, unknown>): {
   readonly token: string;
+  readonly jwksUri: string;
   readonly fetchImpl: typeof fetch;
 } {
-  const keyId = "pegasi-test-key";
+  const keyId = `pegasi-test-key-${++rs256FixtureCounter}`;
   const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const jwk = publicKey.export({ format: "jwk" });
   const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: keyId })).toString("base64url");
@@ -186,6 +190,7 @@ function createRs256Fixture(payload: Record<string, unknown>): {
   const token = `${header}.${body}.${signature}`;
   return {
     token,
+    jwksUri: `https://identity.dev.pegasiiob.com/test-jwks/${keyId}`,
     fetchImpl: (async () => ({
       ok: true,
       status: 200,
