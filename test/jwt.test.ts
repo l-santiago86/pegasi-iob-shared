@@ -1,8 +1,16 @@
-import { createHmac } from "node:crypto";
+import { createHmac, createSign, generateKeyPairSync } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { parseBearerAuthorization, verifyHs256Jwt, verifyHs256JwtWithRotation } from "../src/jwt.js";
+import {
+  extractJwtRoles,
+  parseBearerAuthorization,
+  verifyBearerAuthorization,
+  verifyBearerJwt,
+  verifyHs256Jwt,
+  verifyHs256JwtWithRotation,
+  verifyOidcJwt
+} from "../src/jwt.js";
 
 describe("jwt helpers", () => {
   const secret = "0123456789abcdef0123456789abcdef";
@@ -79,6 +87,80 @@ describe("jwt helpers", () => {
       ).toThrow("JWT is expired");
     });
   });
+
+  describe("OIDC/JWKS verification", () => {
+    const issuer = "https://identity.dev.pegasiiob.com/realms/pegasi-iob";
+    const audience = "pegasi-iob-admin-console";
+    const nowSeconds = 1_800_000_000;
+
+    it("verifies an RS256 OIDC token against JWKS", async () => {
+      const fixture = createRs256Fixture({
+        iss: issuer,
+        aud: [audience, "account"],
+        sub: "user_platform_admin",
+        exp: nowSeconds + 300,
+        tenant_scope_id: "tenant_torax_dev",
+        realm_access: { roles: ["platform_admin", "operator"] }
+      });
+
+      const claims = await verifyOidcJwt(fixture.token, {
+        issuer,
+        audience,
+        nowSeconds,
+        fetchImpl: fixture.fetchImpl
+      });
+
+      expect(claims.sub).toBe("user_platform_admin");
+      expect(claims.tenant_scope_id).toBe("tenant_torax_dev");
+      expect(extractJwtRoles(claims)).toEqual(["platform_admin", "operator"]);
+    });
+
+    it("rejects invalid OIDC audience and expired tokens", async () => {
+      const fixture = createRs256Fixture({
+        iss: issuer,
+        aud: "other-client",
+        sub: "user_platform_admin",
+        exp: nowSeconds + 300
+      });
+
+      await expect(
+        verifyOidcJwt(fixture.token, { issuer, audience, nowSeconds, fetchImpl: fixture.fetchImpl })
+      ).rejects.toThrow("aud claim");
+
+      const expired = createRs256Fixture({
+        iss: issuer,
+        aud: audience,
+        sub: "user_platform_admin",
+        exp: nowSeconds - 1
+      });
+      await expect(
+        verifyOidcJwt(expired.token, { issuer, audience, nowSeconds, fetchImpl: expired.fetchImpl })
+      ).rejects.toThrow("expired");
+    });
+
+    it("routes hybrid bearer verification by JWT alg", async () => {
+      const hs256Token = signJwt({ sub: "svc", exp: nowSeconds + 300 }, secret);
+      await expect(
+        verifyBearerJwt(hs256Token, {
+          mode: "hybrid",
+          hs256: { currentSecret: secret, nowSeconds }
+        })
+      ).resolves.toMatchObject({ sub: "svc" });
+
+      const rs256 = createRs256Fixture({
+        iss: issuer,
+        aud: audience,
+        sub: "user_operator",
+        exp: nowSeconds + 300
+      });
+      await expect(
+        verifyBearerAuthorization(`Bearer ${rs256.token}`, {
+          mode: "hybrid",
+          oidc: { issuer, audience, nowSeconds, fetchImpl: rs256.fetchImpl }
+        })
+      ).resolves.toMatchObject({ sub: "user_operator" });
+    });
+  });
 });
 
 function signJwt(payload: Record<string, unknown>, secret: string): string {
@@ -86,5 +168,29 @@ function signJwt(payload: Record<string, unknown>, secret: string): string {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
   return `${header}.${body}.${signature}`;
+}
+
+function createRs256Fixture(payload: Record<string, unknown>): {
+  readonly token: string;
+  readonly fetchImpl: typeof fetch;
+} {
+  const keyId = "pegasi-test-key";
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const jwk = publicKey.export({ format: "jwk" });
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: keyId })).toString("base64url");
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signer = createSign("RSA-SHA256");
+  signer.update(`${header}.${body}`);
+  signer.end();
+  const signature = signer.sign(privateKey).toString("base64url");
+  const token = `${header}.${body}.${signature}`;
+  return {
+    token,
+    fetchImpl: (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ keys: [{ ...jwk, kid: keyId, alg: "RS256", use: "sig" }] })
+    })) as typeof fetch
+  };
 }
 
